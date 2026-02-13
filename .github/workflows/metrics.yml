@@ -29,5 +29,3 @@ jobs:
           plugin_languages_analysis_timeout: 15
           plugin_languages_categories: programming
           plugin_languages_recent_days: 30
-          plugin_code: yes
-          plugin_code_days: 14
