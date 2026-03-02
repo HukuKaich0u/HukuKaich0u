@@ -12,6 +12,11 @@ jobs:
   github-metrics:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Generate metrics SVG
         uses: lowlighter/metrics@latest
         with:
@@ -29,3 +34,19 @@ jobs:
           plugin_languages_analysis_timeout: 15
           plugin_languages_categories: programming
           plugin_languages_recent_days: 30
+
+      - name: Update README metrics cache key
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          METRICS_VERSION="$(git rev-parse --short HEAD)"
+          METRICS_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/github-metrics.svg?v=${METRICS_VERSION}"
+          sed -i'' -E "s#<img src=\"[^\"]+\" alt=\"GitHub Metrics\" />#  <img src=\"${METRICS_URL}\" alt=\"GitHub Metrics\" />#" README.md
+          if git diff --quiet -- README.md; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "docs: bust metrics image cache [Skip GitHub Action]"
+          git push origin HEAD:main
