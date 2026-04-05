@@ -23,7 +23,7 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         graph_section, section_range = module.extract_graph_section(svg_text)
 
         self.assertIn("Contributions calendar", graph_section)
-        self.assertIn('transform="scale(4) translate(12, 0)"', graph_section)
+        self.assertRegex(graph_section, r'transform="scale\((?:3\.6|4)\) translate\(12, 0\)"')
         self.assertGreater(section_range[1], section_range[0])
 
     def test_transform_recolors_and_relights_only_graph_section(self):
@@ -78,14 +78,61 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             module.extract_graph_section("<svg><div id=\"metrics-end\"></div></svg>")
 
-    def test_transform_is_idempotent_for_already_processed_svg(self):
+    def test_transform_updates_root_scale_for_already_processed_svg(self):
         module = load_module()
         svg_text = (ROOT / "github-metrics.svg").read_text(encoding="utf-8")
 
         transformed_svg, replacement_count = module.transform_svg(svg_text)
 
-        self.assertEqual(transformed_svg, svg_text)
-        self.assertEqual(replacement_count, 0)
+        self.assertIn('transform="scale(3.6) translate(12, 0)"', transformed_svg)
+        self.assertGreaterEqual(replacement_count, 0)
+
+    def test_transform_reduces_graph_root_scale_in_newly_processed_svg(self):
+        module = load_module()
+        sample_svg = """<svg>
+<h2>Contributions calendar</h2>
+<svg viewBox="0,0 480,270">
+<filter id="brightness1"><feComponentTransfer><feFuncR type="linear" slope="0.6"/></feComponentTransfer></filter>
+<filter id="brightness2"><feComponentTransfer><feFuncR type="linear" slope="0.2"/></feComponentTransfer></filter>
+<g transform="scale(4) translate(12, 0)">
+  <g transform="translate(0, 6)">
+    <path d="M1.7,2 0,1 1.7,0 3.4,1 z" fill="#216e39"/>
+    <path d="M0,1 1.7,2 1.7,2.675 0,1.675 z" filter="url(#brightness1)" fill="#216e39"/>
+    <path d="M1.7,2 3.4,1 3.4,1.675 1.7,2.675 z" filter="url(#brightness2)" fill="#216e39"/>
+  </g>
+</g>
+</svg>
+<div id="metrics-end"></div>
+</svg>"""
+
+        transformed_svg, replacement_count = module.transform_svg(sample_svg)
+
+        self.assertIn('transform="scale(3.6) translate(12, 0)"', transformed_svg)
+        self.assertGreater(replacement_count, 0)
+
+    def test_transform_handles_calendar_svg_with_xmlns_first_attribute_order(self):
+        module = load_module()
+        sample_svg = """<svg>
+<h2>Contributions calendar</h2>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" style="margin-top: -130px;" viewBox="0,0 480,270">
+<filter id="brightness1"><feComponentTransfer><feFuncR type="linear" slope="0.6"/></feComponentTransfer></filter>
+<filter id="brightness2"><feComponentTransfer><feFuncR type="linear" slope="0.2"/></feComponentTransfer></filter>
+<g transform="scale(4) translate(12, 0)">
+  <g transform="translate(0, 6)">
+    <path d="M1.7,2 0,1 1.7,0 3.4,1 z" fill="#216e39"/>
+    <path d="M0,1 1.7,2 1.7,2.675 0,1.675 z" filter="url(#brightness1)" fill="#216e39"/>
+    <path d="M1.7,2 3.4,1 3.4,1.675 1.7,2.675 z" filter="url(#brightness2)" fill="#216e39"/>
+  </g>
+</g>
+</svg>
+<div id="metrics-end"></div>
+</svg>"""
+
+        transformed_svg, replacement_count = module.transform_svg(sample_svg)
+
+        self.assertIn('transform="scale(3.6) translate(12, 0)"', transformed_svg)
+        self.assertIn("#d8c8ff", transformed_svg)
+        self.assertGreater(replacement_count, 0)
 
 
 if __name__ == "__main__":

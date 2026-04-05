@@ -9,7 +9,8 @@ import sys
 
 SECTION_MARKER = "Contributions calendar"
 SECTION_END_MARKER = 'id="metrics-end"'
-GRAPH_ROOT_MARKER = 'transform="scale(4) translate(12, 0)"'
+GRAPH_ROOT_TRANSLATE = "translate(12, 0)"
+TARGET_GRAPH_ROOT_SCALE = 3.6
 MIN_EXPECTED_REPLACEMENTS = 50
 
 TOP_FACE_MAP = {
@@ -39,7 +40,6 @@ RIGHT_FACE_MAP = {
 REQUIRED_TOKENS = [
     "brightness1",
     "brightness2",
-    GRAPH_ROOT_MARKER,
 ]
 
 ORIGINAL_PALETTE_TOKENS = ["#9be9a8", "#40c463", "#30a14e", "#216e39"]
@@ -68,6 +68,8 @@ def extract_graph_section(svg_text: str) -> tuple[str, tuple[int, int]]:
     missing = [token for token in REQUIRED_TOKENS if token not in graph_section]
     if missing:
         raise RuntimeError(f"3D contribution graph markers not found: {missing}")
+    if GRAPH_ROOT_TRANSFORM_RE.search(graph_section) is None:
+        raise RuntimeError("3D contribution graph root transform not found")
     if not any(token in graph_section for token in ORIGINAL_PALETTE_TOKENS + TRANSFORMED_PALETTE_TOKENS):
         raise RuntimeError("3D contribution graph color markers not found")
 
@@ -87,6 +89,9 @@ def strengthen_filter_slopes(graph_section: str) -> tuple[str, int]:
 
 
 COORD_PAIR_RE = re.compile(r"(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?),(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)")
+GRAPH_ROOT_TRANSFORM_RE = re.compile(
+    r'transform="scale\((?P<scale>-?\d+(?:\.\d+)?)\)\s+translate\(12,\s*0\)"'
+)
 
 
 def _boost_face_height(path_data: str) -> str:
@@ -125,6 +130,23 @@ def _boost_face_height(path_data: str) -> str:
         f"{formatted[2][0]},{formatted[2][1]} "
         f"{formatted[3][0]},{formatted[3][1]} z"
     )
+
+
+def adjust_graph_root_scale(graph_section: str) -> tuple[str, int]:
+    match = GRAPH_ROOT_TRANSFORM_RE.search(graph_section)
+    if match is None:
+        raise RuntimeError("3D contribution graph root transform not found")
+
+    current_scale = float(match.group("scale"))
+    if current_scale <= TARGET_GRAPH_ROOT_SCALE:
+        return graph_section, 0
+
+    updated_section = GRAPH_ROOT_TRANSFORM_RE.sub(
+        f'transform="scale({TARGET_GRAPH_ROOT_SCALE}) {GRAPH_ROOT_TRANSLATE}"',
+        graph_section,
+        count=1,
+    )
+    return updated_section, 1
 
 
 PATH_RE = re.compile(r"<path(?P<attrs>[^>]*)/?>", re.IGNORECASE)
@@ -178,12 +200,13 @@ def recolor_paths(graph_section: str) -> tuple[str, int]:
 
 def transform_svg(svg_text: str) -> tuple[str, int]:
     graph_section, (start, end) = extract_graph_section(svg_text)
+    graph_section, scale_replacements = adjust_graph_root_scale(graph_section)
     if not any(token in graph_section for token in ORIGINAL_PALETTE_TOKENS):
-        return svg_text, 0
+        return f"{svg_text[:start]}{graph_section}{svg_text[end:]}", scale_replacements
 
     graph_section, filter_replacements = strengthen_filter_slopes(graph_section)
     graph_section, path_replacements = recolor_paths(graph_section)
-    replacements = filter_replacements + path_replacements
+    replacements = scale_replacements + filter_replacements + path_replacements
     if replacements < MIN_EXPECTED_REPLACEMENTS and len(svg_text) > 5000:
         raise RuntimeError("3D contribution graph replacement count too low")
     return f"{svg_text[:start]}{graph_section}{svg_text[end:]}", replacements
