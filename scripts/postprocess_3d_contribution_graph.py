@@ -2,24 +2,48 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
-import os
 from pathlib import Path
 import re
 import sys
-import xml.etree.ElementTree as ET
 
 
 SECTION_MARKER = "Contributions calendar"
 SECTION_END_MARKER = 'id="metrics-end"'
-GRAPH_TRANSLATE = "translate(12, 0)"
-GRAPH_SCALE = 4.6
-RAW_GRAPH_ROOT_MARKER = 'transform="scale(4) translate(12, 0)"'
+GRAPH_ROOT_MARKER = 'transform="scale(4) translate(12, 0)"'
 MIN_EXPECTED_REPLACEMENTS = 50
-SVG_NS = "http://www.w3.org/2000/svg"
 
-ORIGINAL_PALETTE_TOKENS = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"]
-LEGACY_TRANSFORMED_TOKENS = [
+TOP_FACE_MAP = {
+    "#ebedf0": "#f2f1f8",
+    "#9be9a8": "#bfe7ff",
+    "#40c463": "#bff3de",
+    "#30a14e": "#ffd7c2",
+    "#216e39": "#d8c8ff",
+}
+
+LEFT_FACE_MAP = {
+    "#f2f1f8": "#d9d7e8",
+    "#bfe7ff": "#93cfee",
+    "#bff3de": "#8dd8bd",
+    "#ffd7c2": "#f2b99b",
+    "#d8c8ff": "#b39be7",
+}
+
+RIGHT_FACE_MAP = {
+    "#f2f1f8": "#c8c5da",
+    "#bfe7ff": "#6eb7db",
+    "#bff3de": "#62c39d",
+    "#ffd7c2": "#e59c74",
+    "#d8c8ff": "#9277d6",
+}
+
+REQUIRED_TOKENS = [
+    "brightness1",
+    "brightness2",
+    GRAPH_ROOT_MARKER,
+]
+
+ORIGINAL_PALETTE_TOKENS = ["#9be9a8", "#40c463", "#30a14e", "#216e39"]
+TRANSFORMED_PALETTE_TOKENS = [
     "#bfe7ff",
     "#bff3de",
     "#ffd7c2",
@@ -28,90 +52,7 @@ LEGACY_TRANSFORMED_TOKENS = [
     "#8dd8bd",
     "#f2b99b",
     "#b39be7",
-    "#c8c5da",
-    "#6eb7db",
-    "#62c39d",
-    "#e59c74",
-    "#9277d6",
 ]
-
-SEASONAL_TOP_FACE_MAP = {
-    "spring": {
-        "#ebedf0": "#fdf4f9",
-        "#9be9a8": "#f6d7ec",
-        "#40c463": "#efb8d9",
-        "#30a14e": "#e895c2",
-        "#216e39": "#d96aa7",
-    },
-    "summer": {
-        "#ebedf0": "#fffced",
-        "#9be9a8": "#f7eb99",
-        "#40c463": "#f2de68",
-        "#30a14e": "#e6cf3d",
-        "#216e39": "#cfb223",
-    },
-    "autumn": {
-        "#ebedf0": "#fdf1e8",
-        "#9be9a8": "#f7d7ba",
-        "#40c463": "#f2c29b",
-        "#30a14e": "#e89b72",
-        "#216e39": "#cf694c",
-    },
-    "winter": {
-        "#ebedf0": "#f8fbff",
-        "#9be9a8": "#d9efff",
-        "#40c463": "#b8dcff",
-        "#30a14e": "#8fc5f2",
-        "#216e39": "#63a9e6",
-    },
-}
-
-SEASON_MONTHS = {
-    "spring": {3, 4, 5},
-    "summer": {6, 7, 8},
-    "autumn": {9, 10, 11},
-    "winter": {12, 1, 2},
-}
-
-SEASONAL_PALETTE_TOKENS = sorted(
-    {
-        color
-        for season_map in SEASONAL_TOP_FACE_MAP.values()
-        for top_color in season_map.values()
-        for color in (
-            top_color,
-            top_color,
-        )
-    }
-)
-
-REQUIRED_TOKENS = ["brightness1", "brightness2", GRAPH_TRANSLATE]
-COORD_PAIR_RE = re.compile(r"(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?),(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)")
-
-ET.register_namespace("", SVG_NS)
-
-
-def month_to_season(month: int) -> str:
-    for season, months in SEASON_MONTHS.items():
-        if month in months:
-            return season
-    raise ValueError(f"unsupported month: {month}")
-
-
-def _darken(hex_color: str, factor: float) -> str:
-    rgb = [int(hex_color[index : index + 2], 16) for index in range(1, 7, 2)]
-    darkened = [max(0, min(255, round(channel * factor))) for channel in rgb]
-    return "#" + "".join(f"{channel:02x}" for channel in darkened)
-
-
-SEASONAL_LEFT_FACE_MAP = {
-    season: {level: _darken(color, 0.84) for level, color in palette.items()}
-    for season, palette in SEASONAL_TOP_FACE_MAP.items()
-}
-SEASONAL_RIGHT_FACE_MAP = {
-    season: {level: _darken(color, 0.70) for level, color in palette.items()}
-    for season, palette in SEASONAL_TOP_FACE_MAP.items()
-}
 
 
 def extract_graph_section(svg_text: str) -> tuple[str, tuple[int, int]]:
@@ -127,72 +68,25 @@ def extract_graph_section(svg_text: str) -> tuple[str, tuple[int, int]]:
     missing = [token for token in REQUIRED_TOKENS if token not in graph_section]
     if missing:
         raise RuntimeError(f"3D contribution graph markers not found: {missing}")
-
-    if not any(
-        token in graph_section
-        for token in ORIGINAL_PALETTE_TOKENS + LEGACY_TRANSFORMED_TOKENS + SEASONAL_PALETTE_TOKENS
-    ):
+    if not any(token in graph_section for token in ORIGINAL_PALETTE_TOKENS + TRANSFORMED_PALETTE_TOKENS):
         raise RuntimeError("3D contribution graph color markers not found")
 
     return graph_section, (section_start, section_end)
 
 
-def _extract_calendar_svg(graph_section: str) -> tuple[str, tuple[int, int]]:
-    svg_start = graph_section.find('<svg version="1.1"')
-    if svg_start == -1:
-        svg_start = graph_section.find('<svg viewBox="0,0 480,270">')
-    if svg_start == -1:
-        raise RuntimeError("Calendar SVG not found")
-    svg_end = graph_section.rfind("</svg>")
-    if svg_end == -1:
-        raise RuntimeError("Calendar SVG end tag not found")
-    svg_end += len("</svg>")
-    return graph_section[svg_start:svg_end], (svg_start, svg_end)
+def strengthen_filter_slopes(graph_section: str) -> tuple[str, int]:
+    replacements = 0
+    for old, new in (
+        ('slope="0.6"', 'slope="0.72"'),
+        ('slope="0.19999999999999996"', 'slope="0.1"'),
+        ('slope="0.2"', 'slope="0.1"'),
+    ):
+        graph_section, count = graph_section.replace(old, new), graph_section.count(old)
+        replacements += count
+    return graph_section, replacements
 
 
-def _parse_calendar_svg(graph_section: str) -> tuple[ET.Element, str, tuple[int, int]]:
-    calendar_svg, svg_range = _extract_calendar_svg(graph_section)
-    return ET.fromstring(calendar_svg), calendar_svg, svg_range
-
-
-def _find_graph_root(svg_root: ET.Element) -> ET.Element:
-    for group in svg_root.iter():
-        if group.tag.endswith("g") and GRAPH_TRANSLATE in group.attrib.get("transform", ""):
-            return group
-    raise RuntimeError("3D contribution graph root transform not found")
-
-
-def enumerate_cube_positions(graph_section: str) -> list[tuple[int, int, str]]:
-    svg_root, _, _ = _parse_calendar_svg(graph_section)
-    graph_root = _find_graph_root(svg_root)
-    positions: list[tuple[int, int, str]] = []
-    week_groups = [child for child in list(graph_root) if child.tag.endswith("g")]
-    for week_index, week_group in enumerate(week_groups):
-        cube_groups = [child for child in list(week_group) if child.tag.endswith("g")]
-        if not cube_groups:
-            raise RuntimeError(f"Week column {week_index} contains no cube groups")
-        for weekday_index, cube_group in enumerate(cube_groups):
-            positions.append((week_index, weekday_index, ET.tostring(cube_group, encoding="unicode")))
-    return positions
-
-
-def visible_range_end(run_date: date | None = None) -> date:
-    if run_date is None:
-        env_run_date = os.environ.get("METRICS_RUN_DATE")
-        if not env_run_date:
-            raise RuntimeError("METRICS_RUN_DATE is required for reproducible seasonal coloring")
-        run_date = date.fromisoformat(env_run_date)
-    return run_date - timedelta(days=1)
-
-
-def visible_range_start(range_end: date, week_count: int) -> date:
-    sunday_offset = (range_end.weekday() + 1) % 7
-    last_week_start = range_end - timedelta(days=sunday_offset)
-    return last_week_start - timedelta(weeks=week_count - 1)
-
-
-def cube_position_to_date(range_start: date, week_index: int, weekday_index: int) -> date:
-    return range_start + timedelta(weeks=week_index, days=weekday_index)
+COORD_PAIR_RE = re.compile(r"(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?),(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)")
 
 
 def _boost_face_height(path_data: str) -> str:
@@ -204,18 +98,25 @@ def _boost_face_height(path_data: str) -> str:
     base_y = coords[0][1]
     mid_y = coords[1][1]
     far_y = coords[2][1]
+    end_y = coords[3][1]
     height = far_y - mid_y
     if height <= 0:
         return path_data
 
     boosted_height = round(height * 1.4, 3)
-    coords[2][1] = round(coords[1][1] + boosted_height, 3)
+    coords[2][1] = round(mid_y + boosted_height, 3)
     coords[3][1] = round(base_y + boosted_height, 3)
 
     formatted = []
     for x_value, y_value in coords:
-        x_text = str(int(x_value)) if float(x_value).is_integer() else f"{x_value:.3f}".rstrip("0").rstrip(".")
-        y_text = str(int(y_value)) if float(y_value).is_integer() else f"{y_value:.3f}".rstrip("0").rstrip(".")
+        if float(x_value).is_integer():
+            x_text = str(int(x_value))
+        else:
+            x_text = f"{x_value:.3f}".rstrip("0").rstrip(".")
+        if float(y_value).is_integer():
+            y_text = str(int(y_value))
+        else:
+            y_text = f"{y_value:.3f}".rstrip("0").rstrip(".")
         formatted.append((x_text, y_text))
 
     return (
@@ -226,87 +127,66 @@ def _boost_face_height(path_data: str) -> str:
     )
 
 
-def _strengthen_filters(svg_root: ET.Element) -> int:
-    replacements = 0
-    slopes = {"0.6": "0.72", "0.19999999999999996": "0.1", "0.2": "0.1"}
-    for element in svg_root.iter():
-        if not element.tag.endswith(("feFuncR", "feFuncG", "feFuncB")):
-            continue
-        slope = element.attrib.get("slope")
-        if slope in slopes:
-            element.set("slope", slopes[slope])
-            replacements += 1
-    return replacements
+PATH_RE = re.compile(r"<path(?P<attrs>[^>]*)/?>", re.IGNORECASE)
+ATTR_RE = re.compile(r'([a-zA-Z_:][\w:.-]*)="([^"]*)"')
 
 
-def _scale_graph_root(graph_root: ET.Element) -> int:
-    current = graph_root.attrib.get("transform", "")
-    target = f"scale({GRAPH_SCALE}) {GRAPH_TRANSLATE}"
-    if current == target:
-        return 0
-    graph_root.set("transform", target)
-    return 1
-
-
-def _recolor_graph(svg_root: ET.Element, graph_root: ET.Element) -> int:
-    week_groups = [child for child in list(graph_root) if child.tag.endswith("g")]
-    if not week_groups:
-        raise RuntimeError("No week columns found in 3D contribution graph")
-
-    range_end = visible_range_end()
-    range_start = visible_range_start(range_end, len(week_groups))
+def recolor_paths(graph_section: str) -> tuple[str, int]:
     replacements = 0
 
-    for week_index, week_group in enumerate(week_groups):
-        cube_groups = [child for child in list(week_group) if child.tag.endswith("g")]
-        if not cube_groups:
-            raise RuntimeError(f"Week column {week_index} contains no cube groups")
-        for weekday_index, cube_group in enumerate(cube_groups):
-            paths = [child for child in list(cube_group) if child.tag.endswith("path")]
-            if len(paths) != 3:
-                raise RuntimeError("Cube group did not contain exactly three faces")
+    def replace(match: re.Match[str]) -> str:
+        nonlocal replacements
+        attrs_text = match.group("attrs")
+        attrs = dict(ATTR_RE.findall(attrs_text))
+        fill = attrs.get("fill", "").lower()
+        path_data = attrs.get("d")
 
-            top_path, left_path, right_path = paths
-            original_fill = top_path.attrib.get("fill", "").lower()
-            if original_fill not in ORIGINAL_PALETTE_TOKENS:
-                continue
+        if not path_data:
+            return match.group(0)
+        top_fill = TOP_FACE_MAP.get(fill)
+        if top_fill is None:
+            return match.group(0)
 
-            cube_date = cube_position_to_date(range_start, week_index, weekday_index)
-            season = month_to_season(cube_date.month)
-            top_color = SEASONAL_TOP_FACE_MAP[season][original_fill]
-            left_color = SEASONAL_LEFT_FACE_MAP[season][original_fill]
-            right_color = SEASONAL_RIGHT_FACE_MAP[season][original_fill]
+        filter_value = attrs.get("filter", "")
+        if filter_value == "url(#brightness1)":
+            new_fill = LEFT_FACE_MAP[top_fill]
+            new_path_data = _boost_face_height(path_data)
+        elif filter_value == "url(#brightness2)":
+            new_fill = RIGHT_FACE_MAP[top_fill]
+            new_path_data = _boost_face_height(path_data)
+        else:
+            new_fill = top_fill
+            new_path_data = path_data
 
-            top_path.set("fill", top_color)
-            left_path.set("fill", left_color)
-            right_path.set("fill", right_color)
-            left_path.set("d", _boost_face_height(left_path.attrib["d"]))
-            right_path.set("d", _boost_face_height(right_path.attrib["d"]))
-            replacements += 3
+        attrs["fill"] = new_fill
+        attrs["d"] = new_path_data
+        replacements += 1
+        ordered_keys = []
+        for attr_match in ATTR_RE.finditer(attrs_text):
+            key = attr_match.group(1)
+            if key not in ordered_keys:
+                ordered_keys.append(key)
+        for key in attrs:
+            if key not in ordered_keys:
+                ordered_keys.append(key)
 
-    return replacements
+        serialized_attrs = " ".join(f'{key}="{attrs[key]}"' for key in ordered_keys)
+        return f"<path {serialized_attrs}/>"
+
+    return PATH_RE.sub(replace, graph_section), replacements
 
 
 def transform_svg(svg_text: str) -> tuple[str, int]:
-    graph_section, (section_start, section_end) = extract_graph_section(svg_text)
+    graph_section, (start, end) = extract_graph_section(svg_text)
     if not any(token in graph_section for token in ORIGINAL_PALETTE_TOKENS):
         return svg_text, 0
 
-    svg_root, _, svg_range = _parse_calendar_svg(graph_section)
-    graph_root = _find_graph_root(svg_root)
-
-    replacements = 0
-    replacements += _strengthen_filters(svg_root)
-    replacements += _scale_graph_root(graph_root)
-    replacements += _recolor_graph(svg_root, graph_root)
-
+    graph_section, filter_replacements = strengthen_filter_slopes(graph_section)
+    graph_section, path_replacements = recolor_paths(graph_section)
+    replacements = filter_replacements + path_replacements
     if replacements < MIN_EXPECTED_REPLACEMENTS and len(svg_text) > 5000:
         raise RuntimeError("3D contribution graph replacement count too low")
-
-    updated_calendar_svg = ET.tostring(svg_root, encoding="unicode")
-    updated_graph_section = f"{graph_section[:svg_range[0]]}{updated_calendar_svg}{graph_section[svg_range[1]:]}"
-    updated_svg = f"{svg_text[:section_start]}{updated_graph_section}{svg_text[section_end:]}"
-    return updated_svg, replacements
+    return f"{svg_text[:start]}{graph_section}{svg_text[end:]}", replacements
 
 
 def main() -> int:
