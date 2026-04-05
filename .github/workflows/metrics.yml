@@ -5,6 +5,10 @@ on:
     - cron: "0 0 * * *"
   workflow_dispatch:
 
+concurrency:
+  group: metrics-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
 
@@ -41,7 +45,7 @@ jobs:
 
       - name: Update README metrics cache key
         run: |
-          METRICS_VERSION="$(git rev-parse --short HEAD)"
+          METRICS_VERSION="${{ github.run_id }}-${{ github.run_attempt }}"
           METRICS_URL="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/github-metrics.svg?v=${METRICS_VERSION}"
           sed -i'' -E "s#<img src=\"[^\"]+\" alt=\"GitHub Metrics\" />#  <img src=\"${METRICS_URL}\" alt=\"GitHub Metrics\" />#" README.md
           git add github-metrics.svg README.md
@@ -51,4 +55,21 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "docs: bust metrics image cache [Skip GitHub Action]"
-          git push origin HEAD:main
+          for attempt in 1 2 3; do
+            git fetch origin main
+            if ! git rebase origin/main; then
+              git rebase --abort || true
+              if [ "${attempt}" -eq 3 ]; then
+                exit 1
+              fi
+              sleep $((attempt * 5))
+              continue
+            fi
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            if [ "${attempt}" -eq 3 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
