@@ -76,9 +76,9 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         transformed_svg, replacement_count = module.transform_svg(sample_svg)
 
         self.assertGreater(replacement_count, 0)
-        self.assertIn("#f5bfd5", transformed_svg)
-        self.assertIn("#d18aa8", transformed_svg)
-        self.assertIn("#ae6786", transformed_svg)
+        self.assertIn("#df8bc7", transformed_svg)
+        self.assertIn("#c06aa4", transformed_svg)
+        self.assertIn("#9f5088", transformed_svg)
         self.assertIn('slope="0.72"', transformed_svg)
         self.assertIn('slope="0.1"', transformed_svg)
         self.assertIn('<rect fill="#216e39"/>', transformed_svg)
@@ -151,7 +151,7 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
         self.assertIn('transform="scale(3.82) translate(12, 0)"', transformed_svg)
         self.assertIn('style="margin-top: -118px;"', transformed_svg)
-        self.assertIn("#f5bfd5", transformed_svg)
+        self.assertIn("#df8bc7", transformed_svg)
         self.assertGreater(replacement_count, 0)
 
     def test_transform_uses_multiple_seasonal_color_families(self):
@@ -163,10 +163,10 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         transformed_svg, replacement_count = module.transform_svg(svg_text)
 
         self.assertGreaterEqual(replacement_count, 0)
-        self.assertIn("#e8def8", transformed_svg)
+        self.assertIn("#e9c6f4", transformed_svg)
         self.assertIn("#9fd97a", transformed_svg)
         self.assertIn("#d64b4b", transformed_svg)
-        self.assertIn("#bfe7ff", transformed_svg)
+        self.assertIn("#8dbaff", transformed_svg)
 
 
 if __name__ == "__main__":

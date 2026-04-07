@@ -35,27 +35,40 @@ FIXED_TOP_FACE_LEVELS = {
     "#d8c8ff": 4,
 }
 
-SOURCE_TOP_FACE_LEVELS = ORIGINAL_TOP_FACE_LEVELS | FIXED_TOP_FACE_LEVELS
+LEGACY_SEASONAL_TOP_FACE_LEVELS = {
+    "#f7f3ff": 0,
+    "#eee3ff": 1,
+    "#e8def8": 2,
+    "#f0d1df": 3,
+    "#f5bfd5": 4,
+    "#ffffff": 0,
+    "#eef8ff": 1,
+    "#d9f0ff": 2,
+    "#bfe7ff": 3,
+    "#9fd8ff": 4,
+}
+
+SOURCE_TOP_FACE_LEVELS = ORIGINAL_TOP_FACE_LEVELS | FIXED_TOP_FACE_LEVELS | LEGACY_SEASONAL_TOP_FACE_LEVELS
 
 SEASONAL_TOP_FACE_MAP = {
-    "spring": ["#f7f3ff", "#eee3ff", "#e8def8", "#f0d1df", "#f5bfd5"],
+    "spring": ["#f8f1ff", "#f2ddff", "#e9c6f4", "#e7aed8", "#df8bc7"],
     "summer": ["#f5ffe8", "#d9f2b0", "#9fd97a", "#5faa55", "#2f7d32"],
     "autumn": ["#fff3db", "#ffd36b", "#f6b348", "#e07a3f", "#d64b4b"],
-    "winter": ["#ffffff", "#eef8ff", "#d9f0ff", "#bfe7ff", "#9fd8ff"],
+    "winter": ["#ffffff", "#eef8ff", "#d1e6ff", "#8dbaff", "#4b73d9"],
 }
 
 SEASONAL_LEFT_FACE_MAP = {
-    "spring": ["#e4dff0", "#d8caef", "#cdc3dd", "#d8b9c7", "#d18aa8"],
+    "spring": ["#e5deef", "#dcc9ef", "#cfb1dd", "#cd94bd", "#c06aa4"],
     "summer": ["#ddeccf", "#bdd492", "#7fbb66", "#4a8946", "#235f28"],
     "autumn": ["#eadfc6", "#e5ba62", "#db9441", "#c76435", "#b03838"],
-    "winter": ["#e2e2e2", "#d6e5f0", "#bdd7ea", "#93cfee", "#78bbdf"],
+    "winter": ["#e2e2e2", "#d6e5f0", "#b7cde8", "#6f95df", "#3458b8"],
 }
 
 SEASONAL_RIGHT_FACE_MAP = {
-    "spring": ["#c8c3d8", "#baaed7", "#aea3c1", "#bc9aa7", "#ae6786"],
+    "spring": ["#cbc4d9", "#bfaed7", "#af96c1", "#b27ca1", "#9f5088"],
     "summer": ["#c8d8bc", "#9fba74", "#5f9a4e", "#366e35", "#18481d"],
     "autumn": ["#cec4ae", "#c9994e", "#bd7530", "#aa4e27", "#8f2a2a"],
-    "winter": ["#cfcfcf", "#c3d2dc", "#a4bfd2", "#6eb7db", "#5b9bc1"],
+    "winter": ["#cfcfcf", "#c3d2dc", "#9fb7d2", "#5378c0", "#263f90"],
 }
 
 SEASON_MONTHS = {
@@ -288,10 +301,7 @@ def recolor_graph(graph_root: ET.Element) -> int:
 def transform_svg(svg_text: str) -> tuple[str, int]:
     graph_section, (start, end) = extract_graph_section(svg_text)
     graph_section_lower = graph_section.lower()
-    already_seasonal = any(token in graph_section_lower for token in SEASONAL_EXCLUSIVE_TOKENS)
-    has_source_top_faces = (not already_seasonal) and any(
-        token in graph_section_lower for token in SOURCE_TOP_FACE_LEVELS
-    )
+    has_source_top_faces = any(token in graph_section_lower for token in SOURCE_TOP_FACE_LEVELS)
     svg_root, svg_range = _parse_calendar_svg(graph_section)
     graph_root = _find_graph_root(svg_root)
 
