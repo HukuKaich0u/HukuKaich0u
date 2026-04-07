@@ -1,4 +1,5 @@
 import importlib.util
+import os
 from pathlib import Path
 import unittest
 
@@ -16,6 +17,14 @@ def load_module():
 
 
 class Postprocess3DContributionGraphTests(unittest.TestCase):
+    def test_month_to_season_mapping(self):
+        module = load_module()
+
+        self.assertEqual(module.month_to_season(3), "spring")
+        self.assertEqual(module.month_to_season(6), "summer")
+        self.assertEqual(module.month_to_season(9), "autumn")
+        self.assertEqual(module.month_to_season(12), "winter")
+
     def test_extracts_graph_section_from_full_svg(self):
         module = load_module()
         svg_text = (ROOT / "github-metrics.svg").read_text(encoding="utf-8")
@@ -28,6 +37,8 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
     def test_transform_recolors_and_relights_only_graph_section(self):
         module = load_module()
+        os.environ["METRICS_RUN_DATE"] = "2026-04-07"
+        self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
         sample_svg = """<svg>
 <h2>Contributions calendar</h2>
 <svg viewBox="0,0 480,270">
@@ -65,9 +76,9 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         transformed_svg, replacement_count = module.transform_svg(sample_svg)
 
         self.assertGreater(replacement_count, 0)
-        self.assertIn("#d8c8ff", transformed_svg)
-        self.assertIn("#b39be7", transformed_svg)
-        self.assertIn("#9277d6", transformed_svg)
+        self.assertIn("#f5bfd5", transformed_svg)
+        self.assertIn("#d18aa8", transformed_svg)
+        self.assertIn("#ae6786", transformed_svg)
         self.assertIn('slope="0.72"', transformed_svg)
         self.assertIn('slope="0.1"', transformed_svg)
         self.assertIn('<rect fill="#216e39"/>', transformed_svg)
@@ -81,6 +92,8 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
     def test_transform_updates_root_scale_for_already_processed_svg(self):
         module = load_module()
         svg_text = (ROOT / "github-metrics.svg").read_text(encoding="utf-8")
+        os.environ["METRICS_RUN_DATE"] = "2026-04-07"
+        self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
 
         transformed_svg, replacement_count = module.transform_svg(svg_text)
 
@@ -89,6 +102,8 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
     def test_transform_reduces_graph_root_scale_in_newly_processed_svg(self):
         module = load_module()
+        os.environ["METRICS_RUN_DATE"] = "2026-04-07"
+        self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
         sample_svg = """<svg>
 <h2>Contributions calendar</h2>
 <svg viewBox="0,0 480,270">
@@ -112,6 +127,8 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
     def test_transform_handles_calendar_svg_with_xmlns_first_attribute_order(self):
         module = load_module()
+        os.environ["METRICS_RUN_DATE"] = "2026-04-07"
+        self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
         sample_svg = """<svg>
 <h2>Contributions calendar</h2>
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1" style="margin-top: -130px;" viewBox="0,0 480,270">
@@ -131,8 +148,22 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         transformed_svg, replacement_count = module.transform_svg(sample_svg)
 
         self.assertIn('transform="scale(3.6) translate(12, 0)"', transformed_svg)
-        self.assertIn("#d8c8ff", transformed_svg)
+        self.assertIn("#f5bfd5", transformed_svg)
         self.assertGreater(replacement_count, 0)
+
+    def test_transform_uses_multiple_seasonal_color_families(self):
+        module = load_module()
+        svg_text = (ROOT / "github-metrics.svg").read_text(encoding="utf-8")
+        os.environ["METRICS_RUN_DATE"] = "2026-04-07"
+        self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
+
+        transformed_svg, replacement_count = module.transform_svg(svg_text)
+
+        self.assertGreaterEqual(replacement_count, 0)
+        self.assertIn("#e8def8", transformed_svg)
+        self.assertIn("#ffe066", transformed_svg)
+        self.assertIn("#d64b4b", transformed_svg)
+        self.assertIn("#bfe7ff", transformed_svg)
 
 
 if __name__ == "__main__":
