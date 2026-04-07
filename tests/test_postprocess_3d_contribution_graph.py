@@ -161,7 +161,7 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
         self.assertGreaterEqual(replacement_count, 0)
         self.assertIn("#e8def8", transformed_svg)
-        self.assertIn("#ffe066", transformed_svg)
+        self.assertIn("#9fd97a", transformed_svg)
         self.assertIn("#d64b4b", transformed_svg)
         self.assertIn("#bfe7ff", transformed_svg)
 

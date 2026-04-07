@@ -37,21 +37,21 @@ SOURCE_TOP_FACE_LEVELS = ORIGINAL_TOP_FACE_LEVELS | FIXED_TOP_FACE_LEVELS
 
 SEASONAL_TOP_FACE_MAP = {
     "spring": ["#f7f3ff", "#eee3ff", "#e8def8", "#f0d1df", "#f5bfd5"],
-    "summer": ["#fffbea", "#fff3bf", "#ffe066", "#ffc44d", "#ff9f1c"],
+    "summer": ["#f5ffe8", "#d9f2b0", "#9fd97a", "#5faa55", "#2f7d32"],
     "autumn": ["#fff3db", "#ffd36b", "#f6b348", "#e07a3f", "#d64b4b"],
     "winter": ["#ffffff", "#eef8ff", "#d9f0ff", "#bfe7ff", "#9fd8ff"],
 }
 
 SEASONAL_LEFT_FACE_MAP = {
     "spring": ["#e4dff0", "#d8caef", "#cdc3dd", "#d8b9c7", "#d18aa8"],
-    "summer": ["#e8e1ca", "#e5d89a", "#e0c456", "#d9a63f", "#d88620"],
+    "summer": ["#ddeccf", "#bdd492", "#7fbb66", "#4a8946", "#235f28"],
     "autumn": ["#eadfc6", "#e5ba62", "#db9441", "#c76435", "#b03838"],
     "winter": ["#e2e2e2", "#d6e5f0", "#bdd7ea", "#93cfee", "#78bbdf"],
 }
 
 SEASONAL_RIGHT_FACE_MAP = {
     "spring": ["#c8c3d8", "#baaed7", "#aea3c1", "#bc9aa7", "#ae6786"],
-    "summer": ["#cfc8b3", "#cabd87", "#c5aa49", "#c18d35", "#b26a17"],
+    "summer": ["#c8d8bc", "#9fba74", "#5f9a4e", "#366e35", "#18481d"],
     "autumn": ["#cec4ae", "#c9994e", "#bd7530", "#aa4e27", "#8f2a2a"],
     "winter": ["#cfcfcf", "#c3d2dc", "#a4bfd2", "#6eb7db", "#5b9bc1"],
 }
