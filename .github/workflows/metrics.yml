@@ -61,12 +61,19 @@ jobs:
           for attempt in 1 2 3; do
             git fetch origin main
             if ! git rebase origin/main; then
-              git rebase --abort || true
-              if [ "${attempt}" -eq 3 ]; then
-                exit 1
+              CONFLICT_FILES="$(git diff --name-only --diff-filter=U | tr '\n' ' ')"
+              if [ "${CONFLICT_FILES}" = "README.md github-metrics.svg " ] || [ "${CONFLICT_FILES}" = "github-metrics.svg README.md " ] || [ "${CONFLICT_FILES}" = "github-metrics.svg " ] || [ "${CONFLICT_FILES}" = "README.md " ]; then
+                git checkout --theirs -- github-metrics.svg README.md || true
+                git add github-metrics.svg README.md
+                GIT_EDITOR=true git rebase --continue
+              else
+                git rebase --abort || true
+                if [ "${attempt}" -eq 3 ]; then
+                  exit 1
+                fi
+                sleep $((attempt * 5))
+                continue
               fi
-              sleep $((attempt * 5))
-              continue
             fi
             if git push origin HEAD:main; then
               exit 0
