@@ -15,6 +15,7 @@ SECTION_END_MARKER = 'id="metrics-end"'
 GRAPH_ROOT_TRANSLATE = "translate(12, 0)"
 TARGET_GRAPH_ROOT_SCALE = 3.82
 TARGET_CALENDAR_MARGIN_TOP = -118
+TARGET_STATS_TRANSLATE_Y = -18
 MIN_EXPECTED_REPLACEMENTS = 50
 SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -86,6 +87,10 @@ GRAPH_ROOT_TRANSFORM_RE = re.compile(
     r'transform="scale\((?P<scale>-?\d+(?:\.\d+)?)\)\s+translate\(12,\s*0\)"'
 )
 CALENDAR_SVG_START_RE = re.compile(r'<svg\b[^>]*viewBox="0(?:,|\s)0(?:,|\s)480(?:,|\s)270"[^>]*>')
+STATS_SECTION_RE = re.compile(
+    r'(<div class="row">\s*<section>\s*</section>\s*<section)(?P<attrs>[^>]*)>',
+    re.DOTALL,
+)
 
 ET.register_namespace("", SVG_NS)
 
@@ -224,6 +229,22 @@ def adjust_calendar_position(svg_root: ET.Element) -> int:
     return 1
 
 
+def adjust_stats_position(graph_section: str) -> tuple[str, int]:
+    target_style = f'transform: translateY({TARGET_STATS_TRANSLATE_Y}px);'
+
+    def replace(match: re.Match[str]) -> str:
+        attrs = match.group("attrs")
+        if target_style in attrs:
+            return match.group(0)
+        if 'style="' in attrs:
+            attrs = re.sub(r'style="([^"]*)"', lambda m: f'style="{m.group(1).rstrip(";")}; {target_style}"', attrs, count=1)
+            return f"{match.group(1)}{attrs}>"
+        return f'{match.group(1)}{attrs} style="{target_style}">'
+
+    updated_section, count = STATS_SECTION_RE.subn(replace, graph_section, count=1)
+    return updated_section, count
+
+
 def recolor_graph(graph_root: ET.Element) -> int:
     week_groups = [child for child in list(graph_root) if child.tag.endswith("g")]
     if not week_groups:
@@ -288,6 +309,8 @@ def transform_svg(svg_text: str) -> tuple[str, int]:
 
     updated_calendar_svg = ET.tostring(svg_root, encoding="unicode")
     updated_graph_section = f"{graph_section[:svg_range[0]]}{updated_calendar_svg}{graph_section[svg_range[1]:]}"
+    updated_graph_section, stats_replacements = adjust_stats_position(updated_graph_section)
+    replacements += stats_replacements
     return f"{svg_text[:start]}{updated_graph_section}{svg_text[end:]}", replacements
 
 
