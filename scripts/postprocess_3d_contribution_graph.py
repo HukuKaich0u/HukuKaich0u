@@ -15,7 +15,7 @@ SECTION_END_MARKER = 'id="metrics-end"'
 GRAPH_ROOT_TRANSLATE = "translate(12, 0)"
 TARGET_GRAPH_ROOT_SCALE = 3.82
 TARGET_CALENDAR_MARGIN_TOP = -118
-TARGET_STATS_TRANSLATE_Y = -18
+TARGET_STATS_TRANSLATE_Y = -34
 MIN_EXPECTED_REPLACEMENTS = 50
 SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -234,10 +234,8 @@ def adjust_stats_position(graph_section: str) -> tuple[str, int]:
 
     def replace(match: re.Match[str]) -> str:
         attrs = match.group("attrs")
-        if target_style in attrs:
-            return match.group(0)
         if 'style="' in attrs:
-            attrs = re.sub(r'style="([^"]*)"', lambda m: f'style="{m.group(1).rstrip(";")}; {target_style}"', attrs, count=1)
+            attrs = re.sub(r'style="[^"]*"', f'style="{target_style}"', attrs, count=1)
             return f"{match.group(1)}{attrs}>"
         return f'{match.group(1)}{attrs} style="{target_style}">'
 
