@@ -130,7 +130,7 @@
                         </div>
                     </section>
                 </div>
-                <svg xmlns="http://www.w3.org/2000/svg" version="1.1" style="margin-top: -130px;" viewBox="0,0 480,270">
+                <svg xmlns="http://www.w3.org/2000/svg" version="1.1" style="margin-top: -118px;" viewBox="0,0 480,270">
                     <filter id="brightness1">
                         <feComponentTransfer>
                             <feFuncR type="linear" slope="0.72" />
@@ -145,7 +145,7 @@
                             <feFuncB type="linear" slope="0.1" />
                         </feComponentTransfer>
                     </filter>
-                    <g transform="scale(3.6) translate(12, 0)">
+                    <g transform="scale(3.82) translate(12, 0)">
                         <g transform="translate(0, 0)">
                             <g transform="translate(0, 6)">
                                 <path fill="#f7f3ff" d="M1.7,2 0,1 1.7,0 3.4,1 z" />

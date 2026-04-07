@@ -13,7 +13,8 @@ import xml.etree.ElementTree as ET
 SECTION_MARKER = "Contributions calendar"
 SECTION_END_MARKER = 'id="metrics-end"'
 GRAPH_ROOT_TRANSLATE = "translate(12, 0)"
-TARGET_GRAPH_ROOT_SCALE = 3.6
+TARGET_GRAPH_ROOT_SCALE = 3.82
+TARGET_CALENDAR_MARGIN_TOP = -118
 MIN_EXPECTED_REPLACEMENTS = 50
 SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -214,6 +215,15 @@ def adjust_graph_root_scale(graph_root: ET.Element) -> int:
     return 1
 
 
+def adjust_calendar_position(svg_root: ET.Element) -> int:
+    current_style = svg_root.attrib.get("style", "")
+    target_style = f"margin-top: {TARGET_CALENDAR_MARGIN_TOP}px;"
+    if current_style == target_style:
+        return 0
+    svg_root.set("style", target_style)
+    return 1
+
+
 def recolor_graph(graph_root: ET.Element) -> int:
     week_groups = [child for child in list(graph_root) if child.tag.endswith("g")]
     if not week_groups:
@@ -268,6 +278,7 @@ def transform_svg(svg_text: str) -> tuple[str, int]:
 
     replacements = 0
     replacements += strengthen_filter_slopes(svg_root)
+    replacements += adjust_calendar_position(svg_root)
     replacements += adjust_graph_root_scale(graph_root)
     if has_source_top_faces:
         replacements += recolor_graph(graph_root)

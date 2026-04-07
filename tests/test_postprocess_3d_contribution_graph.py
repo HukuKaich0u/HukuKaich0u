@@ -32,7 +32,7 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         graph_section, section_range = module.extract_graph_section(svg_text)
 
         self.assertIn("Contributions calendar", graph_section)
-        self.assertRegex(graph_section, r'transform="scale\((?:3\.6|4)\) translate\(12, 0\)"')
+        self.assertRegex(graph_section, r'transform="scale\((?:3\.82|4)\) translate\(12, 0\)"')
         self.assertGreater(section_range[1], section_range[0])
 
     def test_transform_recolors_and_relights_only_graph_section(self):
@@ -97,7 +97,8 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
         transformed_svg, replacement_count = module.transform_svg(svg_text)
 
-        self.assertIn('transform="scale(3.6) translate(12, 0)"', transformed_svg)
+        self.assertIn('transform="scale(3.82) translate(12, 0)"', transformed_svg)
+        self.assertIn('style="margin-top: -118px;"', transformed_svg)
         self.assertGreaterEqual(replacement_count, 0)
 
     def test_transform_reduces_graph_root_scale_in_newly_processed_svg(self):
@@ -122,7 +123,7 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
         transformed_svg, replacement_count = module.transform_svg(sample_svg)
 
-        self.assertIn('transform="scale(3.6) translate(12, 0)"', transformed_svg)
+        self.assertIn('transform="scale(3.82) translate(12, 0)"', transformed_svg)
         self.assertGreater(replacement_count, 0)
 
     def test_transform_handles_calendar_svg_with_xmlns_first_attribute_order(self):
@@ -147,7 +148,8 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
         transformed_svg, replacement_count = module.transform_svg(sample_svg)
 
-        self.assertIn('transform="scale(3.6) translate(12, 0)"', transformed_svg)
+        self.assertIn('transform="scale(3.82) translate(12, 0)"', transformed_svg)
+        self.assertIn('style="margin-top: -118px;"', transformed_svg)
         self.assertIn("#f5bfd5", transformed_svg)
         self.assertGreater(replacement_count, 0)
 
