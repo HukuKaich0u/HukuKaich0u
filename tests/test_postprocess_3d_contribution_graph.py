@@ -99,7 +99,7 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
         self.assertIn('transform="scale(3.82) translate(12, 0)"', transformed_svg)
         self.assertIn('style="margin-top: -118px;"', transformed_svg)
-        self.assertIn('style="transform: translateY(-24px);"', transformed_svg)
+        self.assertIn('style="transform: translateY(-26px);"', transformed_svg)
         self.assertGreaterEqual(replacement_count, 0)
 
     def test_transform_reduces_graph_root_scale_in_newly_processed_svg(self):

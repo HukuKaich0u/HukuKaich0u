@@ -15,7 +15,7 @@ SECTION_END_MARKER = 'id="metrics-end"'
 GRAPH_ROOT_TRANSLATE = "translate(12, 0)"
 TARGET_GRAPH_ROOT_SCALE = 3.82
 TARGET_CALENDAR_MARGIN_TOP = -118
-TARGET_STATS_TRANSLATE_Y = -24
+DEFAULT_STATS_TRANSLATE_Y = -26
 MIN_EXPECTED_REPLACEMENTS = 50
 SVG_NS = "http://www.w3.org/2000/svg"
 
@@ -104,6 +104,8 @@ STATS_SECTION_RE = re.compile(
     r'(<div class="row">\s*<section>\s*</section>\s*<section)(?P<attrs>[^>]*)>',
     re.DOTALL,
 )
+H2_H3_MARGIN_RE = re.compile(r"h2,h3\{[^}]*margin:(?P<top>-?\d+(?:\.\d+)?)px\s+0\s+(?P<bottom>-?\d+(?:\.\d+)?)px")
+H2_FONT_SIZE_RE = re.compile(r"h2\{[^}]*font-size:(?P<size>-?\d+(?:\.\d+)?)px")
 
 ET.register_namespace("", SVG_NS)
 
@@ -242,8 +244,21 @@ def adjust_calendar_position(svg_root: ET.Element) -> int:
     return 1
 
 
+def compute_stats_translate_y(graph_section: str) -> int:
+    margin_match = H2_H3_MARGIN_RE.search(graph_section)
+    font_size_match = H2_FONT_SIZE_RE.search(graph_section)
+    if not margin_match or not font_size_match:
+        return DEFAULT_STATS_TRANSLATE_Y
+
+    top_margin = float(margin_match.group("top"))
+    bottom_margin = float(margin_match.group("bottom"))
+    font_size = float(font_size_match.group("size"))
+    return -round(top_margin + font_size + bottom_margin)
+
+
 def adjust_stats_position(graph_section: str) -> tuple[str, int]:
-    target_style = f'transform: translateY({TARGET_STATS_TRANSLATE_Y}px);'
+    stats_translate_y = compute_stats_translate_y(graph_section)
+    target_style = f'transform: translateY({stats_translate_y}px);'
 
     def replace(match: re.Match[str]) -> str:
         attrs = match.group("attrs")
