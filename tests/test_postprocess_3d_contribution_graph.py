@@ -159,7 +159,7 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         transformed_svg, replacement_count = module.transform_svg(sample_svg)
 
         self.assertIn('transform="scale(3.82) translate(12, 0)"', transformed_svg)
-        self.assertIn('transform="translate(1.7, 0.35)"', transformed_svg)
+        self.assertIn('transform="translate(1.7, 0.75)"', transformed_svg)
         self.assertIn('transform="translate(0, 6)"', transformed_svg)
         self.assertGreater(replacement_count, 0)
 
@@ -188,9 +188,9 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         transformed_svg, _ = module.transform_svg(sample_svg)
         reprocessed_svg, _ = module.transform_svg(transformed_svg)
 
-        self.assertIn('transform="translate(1.7, 0.35)"', transformed_svg)
-        self.assertIn('transform="translate(1.7, 0.35)"', reprocessed_svg)
-        self.assertNotIn('transform="translate(1.7, 0.122)"', reprocessed_svg)
+        self.assertIn('transform="translate(1.7, 0.75)"', transformed_svg)
+        self.assertIn('transform="translate(1.7, 0.75)"', reprocessed_svg)
+        self.assertNotIn('transform="translate(1.7, 0.562)"', reprocessed_svg)
 
     def test_transform_does_not_reboost_face_heights_when_reprocessed(self):
         module = load_module()
@@ -202,7 +202,7 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 <filter id="brightness1"><feComponentTransfer><feFuncR type="linear" slope="0.72"/></feComponentTransfer></filter>
 <filter id="brightness2"><feComponentTransfer><feFuncR type="linear" slope="0.1"/></feComponentTransfer></filter>
 <g transform="scale(3.82) translate(12, 0)">
-  <g transform="translate(1.7, 0.35)">
+  <g transform="translate(1.7, 0.75)">
     <g transform="translate(0, 6)">
       <path d="M1.7,2 0,1 1.7,0 3.4,1 z" fill="#eef8ff"/>
       <path d="M0,1 1.7,2 1.7,2.945 0,1.945 z" filter="url(#brightness1)" fill="#d6e5f0"/>
