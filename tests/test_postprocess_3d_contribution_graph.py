@@ -127,6 +127,98 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         self.assertIn('transform="scale(3.82) translate(12, 0)"', transformed_svg)
         self.assertGreater(replacement_count, 0)
 
+    def test_transform_flattens_week_y_drift_without_removing_3d_projection(self):
+        module = load_module()
+        os.environ["METRICS_RUN_DATE"] = "2026-04-07"
+        self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
+        sample_svg = """<svg>
+<h2>Contributions calendar</h2>
+<svg viewBox="0,0 480,270">
+<filter id="brightness1"><feComponentTransfer><feFuncR type="linear" slope="0.6"/></feComponentTransfer></filter>
+<filter id="brightness2"><feComponentTransfer><feFuncR type="linear" slope="0.2"/></feComponentTransfer></filter>
+<g transform="scale(4) translate(12, 0)">
+  <g transform="translate(0, 0)">
+    <g transform="translate(0, 6)">
+      <path d="M1.7,2 0,1 1.7,0 3.4,1 z" fill="#216e39"/>
+      <path d="M0,1 1.7,2 1.7,2.675 0,1.675 z" filter="url(#brightness1)" fill="#216e39"/>
+      <path d="M1.7,2 3.4,1 3.4,1.675 1.7,2.675 z" filter="url(#brightness2)" fill="#216e39"/>
+    </g>
+  </g>
+  <g transform="translate(1.7, 1)">
+    <g transform="translate(0, 6)">
+      <path d="M1.7,2 0,1 1.7,0 3.4,1 z" fill="#216e39"/>
+      <path d="M0,1 1.7,2 1.7,2.675 0,1.675 z" filter="url(#brightness1)" fill="#216e39"/>
+      <path d="M1.7,2 3.4,1 3.4,1.675 1.7,2.675 z" filter="url(#brightness2)" fill="#216e39"/>
+    </g>
+  </g>
+</g>
+</svg>
+<div id="metrics-end"></div>
+</svg>"""
+
+        transformed_svg, replacement_count = module.transform_svg(sample_svg)
+
+        self.assertIn('transform="scale(3.82) translate(12, 0)"', transformed_svg)
+        self.assertIn('transform="translate(1.7, 0.35)"', transformed_svg)
+        self.assertIn('transform="translate(0, 6)"', transformed_svg)
+        self.assertGreater(replacement_count, 0)
+
+    def test_transform_keeps_week_y_drift_stable_when_reprocessed(self):
+        module = load_module()
+        os.environ["METRICS_RUN_DATE"] = "2026-04-07"
+        self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
+        sample_svg = """<svg>
+<h2>Contributions calendar</h2>
+<svg viewBox="0,0 480,270">
+<filter id="brightness1"><feComponentTransfer><feFuncR type="linear" slope="0.6"/></feComponentTransfer></filter>
+<filter id="brightness2"><feComponentTransfer><feFuncR type="linear" slope="0.2"/></feComponentTransfer></filter>
+<g transform="scale(4) translate(12, 0)">
+  <g transform="translate(1.7, 1)">
+    <g transform="translate(0, 6)">
+      <path d="M1.7,2 0,1 1.7,0 3.4,1 z" fill="#216e39"/>
+      <path d="M0,1 1.7,2 1.7,2.675 0,1.675 z" filter="url(#brightness1)" fill="#216e39"/>
+      <path d="M1.7,2 3.4,1 3.4,1.675 1.7,2.675 z" filter="url(#brightness2)" fill="#216e39"/>
+    </g>
+  </g>
+</g>
+</svg>
+<div id="metrics-end"></div>
+</svg>"""
+
+        transformed_svg, _ = module.transform_svg(sample_svg)
+        reprocessed_svg, _ = module.transform_svg(transformed_svg)
+
+        self.assertIn('transform="translate(1.7, 0.35)"', transformed_svg)
+        self.assertIn('transform="translate(1.7, 0.35)"', reprocessed_svg)
+        self.assertNotIn('transform="translate(1.7, 0.122)"', reprocessed_svg)
+
+    def test_transform_does_not_reboost_face_heights_when_reprocessed(self):
+        module = load_module()
+        os.environ["METRICS_RUN_DATE"] = "2026-04-07"
+        self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
+        sample_svg = """<svg>
+<h2>Contributions calendar</h2>
+<svg viewBox="0,0 480,270">
+<filter id="brightness1"><feComponentTransfer><feFuncR type="linear" slope="0.72"/></feComponentTransfer></filter>
+<filter id="brightness2"><feComponentTransfer><feFuncR type="linear" slope="0.1"/></feComponentTransfer></filter>
+<g transform="scale(3.82) translate(12, 0)">
+  <g transform="translate(1.7, 0.35)">
+    <g transform="translate(0, 6)">
+      <path d="M1.7,2 0,1 1.7,0 3.4,1 z" fill="#eef8ff"/>
+      <path d="M0,1 1.7,2 1.7,2.945 0,1.945 z" filter="url(#brightness1)" fill="#d6e5f0"/>
+      <path d="M1.7,2 3.4,1 3.4,1.945 1.7,2.945 z" filter="url(#brightness2)" fill="#c3d2dc"/>
+    </g>
+  </g>
+</g>
+</svg>
+<div id="metrics-end"></div>
+</svg>"""
+
+        reprocessed_svg, _ = module.transform_svg(sample_svg)
+
+        self.assertIn('d="M0,1 1.7,2 1.7,2.945 0,1.945 z"', reprocessed_svg)
+        self.assertIn('d="M1.7,2 3.4,1 3.4,1.945 1.7,2.945 z"', reprocessed_svg)
+
     def test_transform_handles_calendar_svg_with_xmlns_first_attribute_order(self):
         module = load_module()
         os.environ["METRICS_RUN_DATE"] = "2026-04-07"

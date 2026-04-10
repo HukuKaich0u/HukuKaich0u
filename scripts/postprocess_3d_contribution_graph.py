@@ -14,6 +14,8 @@ SECTION_MARKER = "Contributions calendar"
 SECTION_END_MARKER = 'id="metrics-end"'
 GRAPH_ROOT_TRANSLATE = "translate(12, 0)"
 TARGET_GRAPH_ROOT_SCALE = 3.82
+WEEK_X_STEP = 1.7
+TARGET_WEEK_Y_DRIFT_FACTOR = 0.35
 TARGET_CALENDAR_MARGIN_TOP = -118
 DEFAULT_STATS_TRANSLATE_Y = -26
 MIN_EXPECTED_REPLACEMENTS = 50
@@ -96,6 +98,9 @@ SEASONAL_EXCLUSIVE_TOKENS = sorted(
 )
 
 COORD_PAIR_RE = re.compile(r"(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?),(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)")
+TRANSLATE_RE = re.compile(
+    r"^translate\((?P<x>-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?),\s*(?P<y>-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\)$"
+)
 GRAPH_ROOT_TRANSFORM_RE = re.compile(
     r'transform="scale\((?P<scale>-?\d+(?:\.\d+)?)\)\s+translate\(12,\s*0\)"'
 )
@@ -226,6 +231,10 @@ def _boost_face_height(path_data: str) -> str:
     )
 
 
+def _format_number(value: float) -> str:
+    return str(int(value)) if float(value).is_integer() else f"{value:.3f}".rstrip("0").rstrip(".")
+
+
 def adjust_graph_root_scale(graph_root: ET.Element) -> int:
     current = graph_root.attrib.get("transform", "")
     target = f"scale({TARGET_GRAPH_ROOT_SCALE}) {GRAPH_ROOT_TRANSLATE}"
@@ -233,6 +242,27 @@ def adjust_graph_root_scale(graph_root: ET.Element) -> int:
         return 0
     graph_root.set("transform", target)
     return 1
+
+
+def adjust_week_y_drift(graph_root: ET.Element) -> int:
+    replacements = 0
+    for week_group in [child for child in list(graph_root) if child.tag.endswith("g")]:
+        transform = week_group.attrib.get("transform", "")
+        match = TRANSLATE_RE.match(transform)
+        if match is None:
+            continue
+
+        x_value = float(match.group("x"))
+        week_index = round(x_value / WEEK_X_STEP)
+        target_y = round(week_index * TARGET_WEEK_Y_DRIFT_FACTOR, 3)
+        target = f"translate({_format_number(x_value)}, {_format_number(target_y)})"
+        if transform == target:
+            continue
+
+        week_group.set("transform", target)
+        replacements += 1
+
+    return replacements
 
 
 def adjust_calendar_position(svg_root: ET.Element) -> int:
@@ -296,18 +326,21 @@ def recolor_graph(graph_root: ET.Element) -> int:
                 raise RuntimeError("Cube group did not contain exactly three faces")
 
             top_path, left_path, right_path = paths
-            level = SOURCE_TOP_FACE_LEVELS.get(top_path.attrib.get("fill", "").lower())
+            source_top_fill = top_path.attrib.get("fill", "").lower()
+            level = SOURCE_TOP_FACE_LEVELS.get(source_top_fill)
             if level is None:
                 continue
 
             cube_date = cube_position_to_date(range_start, week_index, weekday_index)
             season = month_to_season(cube_date.month)
+            should_boost_faces = source_top_fill in ORIGINAL_TOP_FACE_LEVELS or source_top_fill in FIXED_TOP_FACE_LEVELS
 
             top_path.set("fill", SEASONAL_TOP_FACE_MAP[season][level])
             left_path.set("fill", SEASONAL_LEFT_FACE_MAP[season][level])
             right_path.set("fill", SEASONAL_RIGHT_FACE_MAP[season][level])
-            left_path.set("d", _boost_face_height(left_path.attrib["d"]))
-            right_path.set("d", _boost_face_height(right_path.attrib["d"]))
+            if should_boost_faces:
+                left_path.set("d", _boost_face_height(left_path.attrib["d"]))
+                right_path.set("d", _boost_face_height(right_path.attrib["d"]))
             replacements += 3
 
     return replacements
@@ -324,6 +357,7 @@ def transform_svg(svg_text: str) -> tuple[str, int]:
     replacements += strengthen_filter_slopes(svg_root)
     replacements += adjust_calendar_position(svg_root)
     replacements += adjust_graph_root_scale(graph_root)
+    replacements += adjust_week_y_drift(graph_root)
     if has_source_top_faces:
         replacements += recolor_graph(graph_root)
 
