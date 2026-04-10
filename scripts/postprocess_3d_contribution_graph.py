@@ -106,6 +106,8 @@ STATS_SECTION_RE = re.compile(
 )
 H2_H3_MARGIN_RE = re.compile(r"h2,h3\{[^}]*margin:(?P<top>-?\d+(?:\.\d+)?)px\s+0\s+(?P<bottom>-?\d+(?:\.\d+)?)px")
 H2_FONT_SIZE_RE = re.compile(r"h2\{[^}]*font-size:(?P<size>-?\d+(?:\.\d+)?)px")
+OUTER_SVG_START_RE = re.compile(r"<(?P<tag>svg)\b(?P<attrs>[^>]*)>", re.DOTALL)
+FOREIGN_OBJECT_START_RE = re.compile(r"<(?P<tag>foreignObject)\b(?P<attrs>[^>]*)>", re.DOTALL)
 
 ET.register_namespace("", SVG_NS)
 
@@ -134,6 +136,21 @@ def visible_range_start(range_end: date, week_count: int) -> date:
 
 def cube_position_to_date(range_start: date, week_index: int, weekday_index: int) -> date:
     return range_start + timedelta(weeks=week_index, days=weekday_index)
+
+
+def _ensure_overflow_hidden(match: re.Match[str]) -> str:
+    attrs = match.group("attrs")
+    if re.search(r'\boverflow="[^"]*"', attrs):
+        attrs = re.sub(r'\boverflow="[^"]*"', 'overflow="hidden"', attrs, count=1)
+    else:
+        attrs = f'{attrs} overflow="hidden"'
+    return f"<{match.group('tag')}{attrs}>"
+
+
+def adjust_outer_clipping(svg_text: str) -> tuple[str, int]:
+    svg_text, svg_count = OUTER_SVG_START_RE.subn(_ensure_overflow_hidden, svg_text, count=1)
+    svg_text, foreign_object_count = FOREIGN_OBJECT_START_RE.subn(_ensure_overflow_hidden, svg_text, count=1)
+    return svg_text, svg_count + foreign_object_count
 
 
 def extract_graph_section(svg_text: str) -> tuple[str, tuple[int, int]]:
@@ -317,13 +334,14 @@ def recolor_graph(graph_root: ET.Element) -> int:
 
 
 def transform_svg(svg_text: str) -> tuple[str, int]:
+    svg_text, outer_replacements = adjust_outer_clipping(svg_text)
     graph_section, (start, end) = extract_graph_section(svg_text)
     graph_section_lower = graph_section.lower()
     has_source_top_faces = any(token in graph_section_lower for token in SOURCE_TOP_FACE_LEVELS)
     svg_root, svg_range = _parse_calendar_svg(graph_section)
     graph_root = _find_graph_root(svg_root)
 
-    replacements = 0
+    replacements = outer_replacements
     replacements += strengthen_filter_slopes(svg_root)
     replacements += adjust_calendar_position(svg_root)
     replacements += adjust_graph_root_scale(graph_root)
