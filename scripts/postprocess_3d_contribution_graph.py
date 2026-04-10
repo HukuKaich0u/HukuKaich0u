@@ -18,6 +18,7 @@ TARGET_CALENDAR_MARGIN_TOP = -118
 DEFAULT_STATS_TRANSLATE_Y = -26
 MIN_EXPECTED_REPLACEMENTS = 50
 SVG_NS = "http://www.w3.org/2000/svg"
+METRICS_BACKGROUND_RECT = '<rect width="100%" height="100%" fill="#0d1117"/>'
 
 ORIGINAL_TOP_FACE_LEVELS = {
     "#ebedf0": 0,
@@ -151,6 +152,18 @@ def adjust_outer_clipping(svg_text: str) -> tuple[str, int]:
     svg_text, svg_count = OUTER_SVG_START_RE.subn(_ensure_overflow_hidden, svg_text, count=1)
     svg_text, foreign_object_count = FOREIGN_OBJECT_START_RE.subn(_ensure_overflow_hidden, svg_text, count=1)
     return svg_text, svg_count + foreign_object_count
+
+
+def adjust_outer_background(svg_text: str) -> tuple[str, int]:
+    if METRICS_BACKGROUND_RECT in svg_text:
+        return svg_text, 0
+
+    match = FOREIGN_OBJECT_START_RE.search(svg_text)
+    if match is None:
+        return svg_text, 0
+
+    updated_svg = f"{svg_text[:match.start()]}    {METRICS_BACKGROUND_RECT}\n    {svg_text[match.start():]}"
+    return updated_svg, 1
 
 
 def extract_graph_section(svg_text: str) -> tuple[str, tuple[int, int]]:
@@ -335,13 +348,14 @@ def recolor_graph(graph_root: ET.Element) -> int:
 
 def transform_svg(svg_text: str) -> tuple[str, int]:
     svg_text, outer_replacements = adjust_outer_clipping(svg_text)
+    svg_text, background_replacements = adjust_outer_background(svg_text)
     graph_section, (start, end) = extract_graph_section(svg_text)
     graph_section_lower = graph_section.lower()
     has_source_top_faces = any(token in graph_section_lower for token in SOURCE_TOP_FACE_LEVELS)
     svg_root, svg_range = _parse_calendar_svg(graph_section)
     graph_root = _find_graph_root(svg_root)
 
-    replacements = outer_replacements
+    replacements = outer_replacements + background_replacements
     replacements += strengthen_filter_slopes(svg_root)
     replacements += adjust_calendar_position(svg_root)
     replacements += adjust_graph_root_scale(graph_root)
