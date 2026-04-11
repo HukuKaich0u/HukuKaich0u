@@ -226,6 +226,33 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         self.assertIn('transform="translate(0, 6)"', transformed_svg)
         self.assertGreater(replacement_count, 0)
 
+    def test_transform_limits_face_height_boost_to_keep_front_edge_compact(self):
+        module = load_module()
+        os.environ["METRICS_RUN_DATE"] = "2026-04-07"
+        self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
+        sample_svg = """<svg>
+<h2>Contributions calendar</h2>
+<svg viewBox="0,0 480,270">
+<filter id="brightness1"><feComponentTransfer><feFuncR type="linear" slope="0.6"/></feComponentTransfer></filter>
+<filter id="brightness2"><feComponentTransfer><feFuncR type="linear" slope="0.2"/></feComponentTransfer></filter>
+<g transform="scale(4) translate(12, 0)">
+  <g transform="translate(0, 0)">
+    <g transform="translate(0, 6)">
+      <path d="M1.7,2 0,1 1.7,0 3.4,1 z" fill="#216e39"/>
+      <path d="M0,1 1.7,2 1.7,2.675 0,1.675 z" filter="url(#brightness1)" fill="#216e39"/>
+      <path d="M1.7,2 3.4,1 3.4,1.675 1.7,2.675 z" filter="url(#brightness2)" fill="#216e39"/>
+    </g>
+  </g>
+</g>
+</svg>
+<div id="metrics-end"></div>
+</svg>"""
+
+        transformed_svg, _ = module.transform_svg(sample_svg)
+
+        self.assertIn('d="M0,1 1.7,2 1.7,2.81 0,1.81 z"', transformed_svg)
+        self.assertIn('d="M1.7,2 3.4,1 3.4,1.81 1.7,2.81 z"', transformed_svg)
+
     def test_transform_keeps_week_y_drift_stable_when_reprocessed(self):
         module = load_module()
         os.environ["METRICS_RUN_DATE"] = "2026-04-07"

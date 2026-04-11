@@ -17,6 +17,7 @@ TARGET_GRAPH_ROOT_SCALE = 3.82
 TARGET_CALENDAR_MARGIN_TOP = -118
 DEFAULT_STATS_TRANSLATE_Y = -26
 MIN_EXPECTED_REPLACEMENTS = 50
+FACE_HEIGHT_BOOST_FACTOR = 1.2
 SVG_NS = "http://www.w3.org/2000/svg"
 METRICS_BACKGROUND_RECT = '<rect width="100%" height="100%" fill="#0d1117"/>'
 
@@ -238,7 +239,7 @@ def _boost_face_height(path_data: str) -> str:
     if height <= 0:
         return path_data
 
-    boosted_height = round(height * 1.4, 3)
+    boosted_height = round(height * FACE_HEIGHT_BOOST_FACTOR, 3)
     coords[2][1] = round(mid_y + boosted_height, 3)
     coords[3][1] = round(base_y + boosted_height, 3)
 
