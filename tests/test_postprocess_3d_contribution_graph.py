@@ -119,7 +119,7 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         self.assertIn('<foreignObject x="0" y="0" width="100%" height="100%" overflow="hidden">', transformed_svg)
         self.assertGreater(replacement_count, 0)
 
-    def test_transform_adds_opaque_metrics_background(self):
+    def test_transform_preserves_transparent_metrics_background(self):
         module = load_module()
         os.environ["METRICS_RUN_DATE"] = "2026-04-07"
         self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
@@ -145,11 +145,7 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
         transformed_svg, replacement_count = module.transform_svg(sample_svg)
 
-        self.assertIn('<rect width="100%" height="100%" fill="#0d1117"/>', transformed_svg)
-        self.assertLess(
-            transformed_svg.index('<rect width="100%" height="100%" fill="#0d1117"/>'),
-            transformed_svg.index("<foreignObject"),
-        )
+        self.assertNotIn('<rect width="100%" height="100%" fill="#0d1117"/>', transformed_svg)
         self.assertGreater(replacement_count, 0)
 
     def test_raises_when_graph_markers_are_missing(self):

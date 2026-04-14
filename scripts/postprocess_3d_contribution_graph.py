@@ -19,7 +19,6 @@ DEFAULT_STATS_TRANSLATE_Y = -26
 MIN_EXPECTED_REPLACEMENTS = 50
 FACE_HEIGHT_BOOST_FACTOR = 1.0
 SVG_NS = "http://www.w3.org/2000/svg"
-METRICS_BACKGROUND_RECT = '<rect width="100%" height="100%" fill="#0d1117"/>'
 
 ORIGINAL_TOP_FACE_LEVELS = {
     "#ebedf0": 0,
@@ -110,6 +109,7 @@ H2_H3_MARGIN_RE = re.compile(r"h2,h3\{[^}]*margin:(?P<top>-?\d+(?:\.\d+)?)px\s+0
 H2_FONT_SIZE_RE = re.compile(r"h2\{[^}]*font-size:(?P<size>-?\d+(?:\.\d+)?)px")
 OUTER_SVG_START_RE = re.compile(r"<(?P<tag>svg)\b(?P<attrs>[^>]*)>", re.DOTALL)
 FOREIGN_OBJECT_START_RE = re.compile(r"<(?P<tag>foreignObject)\b(?P<attrs>[^>]*)>", re.DOTALL)
+LEGACY_BACKGROUND_RECT_RE = re.compile(r'\s*<rect width="100%" height="100%" fill="#0d1117"\s*/>\s*')
 
 ET.register_namespace("", SVG_NS)
 
@@ -155,16 +155,8 @@ def adjust_outer_clipping(svg_text: str) -> tuple[str, int]:
     return svg_text, svg_count + foreign_object_count
 
 
-def adjust_outer_background(svg_text: str) -> tuple[str, int]:
-    if METRICS_BACKGROUND_RECT in svg_text:
-        return svg_text, 0
-
-    match = FOREIGN_OBJECT_START_RE.search(svg_text)
-    if match is None:
-        return svg_text, 0
-
-    updated_svg = f"{svg_text[:match.start()]}    {METRICS_BACKGROUND_RECT}\n    {svg_text[match.start():]}"
-    return updated_svg, 1
+def remove_legacy_background(svg_text: str) -> tuple[str, int]:
+    return LEGACY_BACKGROUND_RECT_RE.subn("\n    ", svg_text, count=1)
 
 
 def extract_graph_section(svg_text: str) -> tuple[str, tuple[int, int]]:
@@ -349,7 +341,7 @@ def recolor_graph(graph_root: ET.Element) -> int:
 
 def transform_svg(svg_text: str) -> tuple[str, int]:
     svg_text, outer_replacements = adjust_outer_clipping(svg_text)
-    svg_text, background_replacements = adjust_outer_background(svg_text)
+    svg_text, background_replacements = remove_legacy_background(svg_text)
     graph_section, (start, end) = extract_graph_section(svg_text)
     graph_section_lower = graph_section.lower()
     has_source_top_faces = any(token in graph_section_lower for token in SOURCE_TOP_FACE_LEVELS)
