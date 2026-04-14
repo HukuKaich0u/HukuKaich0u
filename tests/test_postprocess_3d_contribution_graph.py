@@ -256,8 +256,8 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
         transformed_svg, _ = module.transform_svg(sample_svg)
 
-        self.assertIn('d="M0,1 1.7,2 1.7,2.81 0,1.81 z"', transformed_svg)
-        self.assertIn('d="M1.7,2 3.4,1 3.4,1.81 1.7,2.81 z"', transformed_svg)
+        self.assertIn('d="M0,1 1.7,2 1.7,2.675 0,1.675 z"', transformed_svg)
+        self.assertIn('d="M1.7,2 3.4,1 3.4,1.675 1.7,2.675 z"', transformed_svg)
 
     def test_transform_keeps_week_y_drift_stable_when_reprocessed(self):
         module = load_module()
