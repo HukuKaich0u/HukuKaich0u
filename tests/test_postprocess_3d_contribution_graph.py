@@ -6,6 +6,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts" / "postprocess_3d_contribution_graph.py"
+WORKFLOW_PATH = ROOT / ".github" / "workflows" / "metrics.yml"
 
 
 def load_module():
@@ -17,6 +18,11 @@ def load_module():
 
 
 class Postprocess3DContributionGraphTests(unittest.TestCase):
+    def test_metrics_workflow_disables_action_managed_output_commits(self):
+        workflow_text = WORKFLOW_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("output_action: none", workflow_text)
+
     def test_month_to_season_mapping(self):
         module = load_module()
 
