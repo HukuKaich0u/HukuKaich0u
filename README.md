@@ -1,5 +1,5 @@
 # HukuKaich0u
 
 <p align="center">
-                                                                                              <img src="https://raw.githubusercontent.com/HukuKaich0u/HukuKaich0u/main/github-metrics.svg?v=manual-20260414-1" alt="GitHub Metrics" />
+                                                                                                <img src="https://raw.githubusercontent.com/HukuKaich0u/HukuKaich0u/main/github-metrics.svg?v=24431328935-1" alt="GitHub Metrics" />
 </p>
