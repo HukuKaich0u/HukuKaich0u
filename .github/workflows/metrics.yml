@@ -45,6 +45,11 @@ jobs:
           plugin_languages_categories: programming
           plugin_languages_recent_days: 30
 
+      - name: Sync metrics streak summary
+        run: python3 scripts/sync_metrics_streaks.py github-metrics.svg
+        env:
+          METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}
+
       - name: Post-process 3D contribution graph
         run: python3 scripts/postprocess_3d_contribution_graph.py github-metrics.svg
 
