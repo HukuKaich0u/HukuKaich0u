@@ -23,6 +23,15 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
 
         self.assertIn("output_action: none", workflow_text)
 
+    def test_metrics_workflow_sets_explicit_commit_author_identifiers(self):
+        workflow_text = WORKFLOW_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("commits_authoring:", workflow_text)
+        self.assertIn("HukuKaich0u", workflow_text)
+        self.assertIn("Koki Aoyagi", workflow_text)
+        self.assertIn("170926658+HukuKaich0u@users.noreply.github.com", workflow_text)
+        self.assertIn("kouki0802.ao@gmail.com", workflow_text)
+
     def test_month_to_season_mapping(self):
         module = load_module()
 

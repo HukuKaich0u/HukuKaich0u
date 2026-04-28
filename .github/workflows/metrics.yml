@@ -31,6 +31,7 @@ jobs:
           token: ${{ secrets.METRICS_TOKEN }}
           output_action: none
           user: ${{ github.repository_owner }}
+          commits_authoring: HukuKaich0u, Koki Aoyagi, 170926658+HukuKaich0u@users.noreply.github.com, kouki0802.ao@gmail.com
           template: classic
           base: ""
           filename: github-metrics.svg
