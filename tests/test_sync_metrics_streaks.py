@@ -42,6 +42,23 @@ class SyncMetricsStreaksTests(unittest.TestCase):
         self.assertEqual(streak["current"], 7)
         self.assertEqual(streak["max"], 7)
 
+    def test_compute_streak_ignores_zero_for_incomplete_current_day(self):
+        module = load_module()
+
+        streak = module.compute_streak(
+            [
+                {"date": "2026-05-08", "contributionCount": 3},
+                {"date": "2026-05-09", "contributionCount": 1},
+                {"date": "2026-05-10", "contributionCount": 7},
+                {"date": "2026-05-11", "contributionCount": 2},
+                {"date": "2026-05-12", "contributionCount": 0},
+            ],
+            today="2026-05-12",
+        )
+
+        self.assertEqual(streak["current"], 4)
+        self.assertEqual(streak["max"], 4)
+
     def test_sync_streak_labels_rewrites_only_streak_values(self):
         module = load_module()
         sample_svg = """

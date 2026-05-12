@@ -49,6 +49,7 @@ jobs:
         run: python3 scripts/sync_metrics_streaks.py github-metrics.svg
         env:
           METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}
+          METRICS_RUN_DATE: ${{ env.METRICS_RUN_DATE }}
 
       - name: Post-process 3D contribution graph
         run: python3 scripts/postprocess_3d_contribution_graph.py github-metrics.svg

@@ -16,7 +16,13 @@ CURRENT_STREAK_RE = re.compile(r"Current streak \d+ days?")
 BEST_STREAK_RE = re.compile(r"Best streak \d+ days?")
 
 
-def compute_streak(days: list[dict[str, object]]) -> dict[str, int]:
+def compute_streak(days: list[dict[str, object]], today: str | None = None) -> dict[str, int]:
+    current_days = days
+    if today and days:
+        last_day = days[-1]
+        if str(last_day["date"]) == today and int(last_day["contributionCount"]) == 0:
+            current_days = days[:-1]
+
     current = 0
     maximum = 0
 
@@ -25,6 +31,14 @@ def compute_streak(days: list[dict[str, object]]) -> dict[str, int]:
         if contribution_count > 0:
             current += 1
             maximum = max(maximum, current)
+        else:
+            current = 0
+
+    current = 0
+    for day in current_days:
+        contribution_count = int(day["contributionCount"])
+        if contribution_count > 0:
+            current += 1
         else:
             current = 0
 
@@ -98,10 +112,11 @@ def main(argv: list[str]) -> int:
     if not token:
         raise RuntimeError("METRICS_TOKEN is required")
     login = os.environ.get("GITHUB_REPOSITORY_OWNER", "HukuKaich0u")
+    today = os.environ.get("METRICS_RUN_DATE")
 
     svg_path = Path(argv[1])
     svg_text = svg_path.read_text(encoding="utf-8")
-    streak = compute_streak(fetch_contribution_days(token=token, login=login))
+    streak = compute_streak(fetch_contribution_days(token=token, login=login), today=today)
     updated_svg = sync_streak_labels(svg_text, current_streak=streak["current"], max_streak=streak["max"])
 
     if updated_svg != svg_text:
