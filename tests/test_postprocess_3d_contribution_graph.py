@@ -176,6 +176,19 @@ class Postprocess3DContributionGraphTests(unittest.TestCase):
         self.assertIn('style="transform: translateY(-26px);"', transformed_svg)
         self.assertGreaterEqual(replacement_count, 0)
 
+    def test_transform_accepts_already_seasonal_svg_without_recolor_failure(self):
+        module = load_module()
+        svg_text = (ROOT / "github-metrics.svg").read_text(encoding="utf-8")
+        os.environ["METRICS_RUN_DATE"] = "2026-06-17"
+        self.addCleanup(os.environ.pop, "METRICS_RUN_DATE", None)
+
+        transformed_svg, replacement_count = module.transform_svg(svg_text)
+
+        self.assertIn('transform="scale(3.82) translate(12, 0)"', transformed_svg)
+        self.assertIn('style="margin-top: -118px;"', transformed_svg)
+        self.assertIn("#f8f1ff", transformed_svg)
+        self.assertGreaterEqual(replacement_count, 0)
+
     def test_transform_reduces_graph_root_scale_in_newly_processed_svg(self):
         module = load_module()
         os.environ["METRICS_RUN_DATE"] = "2026-04-07"

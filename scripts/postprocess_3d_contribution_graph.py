@@ -339,23 +339,45 @@ def recolor_graph(graph_root: ET.Element) -> int:
     return replacements
 
 
+def count_top_faces_with_fills(graph_root: ET.Element, fills: set[str]) -> int:
+    week_groups = [child for child in list(graph_root) if child.tag.endswith("g")]
+    if week_groups and all(
+        len([child for child in list(group) if child.tag.endswith("path")]) == 3 for group in week_groups
+    ):
+        week_groups = [graph_root]
+
+    count = 0
+    for week_group in week_groups:
+        cube_groups = [child for child in list(week_group) if child.tag.endswith("g")]
+        for cube_group in cube_groups:
+            paths = [child for child in list(cube_group) if child.tag.endswith("path")]
+            if len(paths) != 3:
+                continue
+            top_fill = paths[0].attrib.get("fill", "").lower()
+            if top_fill in fills:
+                count += 1
+    return count
+
+
 def transform_svg(svg_text: str) -> tuple[str, int]:
     svg_text, outer_replacements = adjust_outer_clipping(svg_text)
     svg_text, background_replacements = remove_legacy_background(svg_text)
     graph_section, (start, end) = extract_graph_section(svg_text)
-    graph_section_lower = graph_section.lower()
-    has_source_top_faces = any(token in graph_section_lower for token in SOURCE_TOP_FACE_LEVELS)
     svg_root, svg_range = _parse_calendar_svg(graph_section)
     graph_root = _find_graph_root(svg_root)
+    recolorable_top_face_count = count_top_faces_with_fills(
+        graph_root, set(ORIGINAL_TOP_FACE_LEVELS) | set(FIXED_TOP_FACE_LEVELS)
+    )
+    should_recolor_graph = recolorable_top_face_count > 0
 
     replacements = outer_replacements + background_replacements
     replacements += strengthen_filter_slopes(svg_root)
     replacements += adjust_calendar_position(svg_root)
     replacements += adjust_graph_root_scale(graph_root)
-    if has_source_top_faces:
+    if should_recolor_graph:
         replacements += recolor_graph(graph_root)
 
-    if has_source_top_faces and replacements < MIN_EXPECTED_REPLACEMENTS and len(svg_text) > 5000:
+    if should_recolor_graph and replacements < MIN_EXPECTED_REPLACEMENTS and len(svg_text) > 5000:
         raise RuntimeError("3D contribution graph replacement count too low")
 
     updated_calendar_svg = ET.tostring(svg_root, encoding="unicode")
